@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+
+# VS Code
+.vscode/
+
+# Secrets
+appsettings.Development.json
+.env
+
+# Docker
+*.tar
