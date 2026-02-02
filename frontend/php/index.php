@@ -1,12 +1,17 @@
 <?php
-session_start();
+require_once "translations.php";
+
+$translations = getTranslations();
 ?>
 
-<h1>Translation Tool</h1>
+<h1>Translations</h1>
 
-<?php if (!isset($_SESSION["access_token"])): ?>
-    <a href="login.php">Login</a>
-<?php else: ?>
-    <a href="api.php">Load translations</a><br><br>
-    <a href="logout.php">Logout</a>
-<?php endif; ?>
+<ul>
+<?php foreach ($translations as $t): ?>
+    <li>
+        <?= htmlspecialchars($t["sid"]) ?>
+        (<?= htmlspecialchars($t["langId"]) ?>):
+        <?= htmlspecialchars($t["text"]) ?>
+    </li>
+<?php endforeach; ?>
+</ul>

@@ -1,23 +1,29 @@
 <?php
-session_start();
+require_once "auth.php";
 
-$token = $_SESSION["access_token"] ?? null;
-if (!$token) {
-    die("Not logged in");
+function apiRequest($method, $endpoint, $body = null) {
+    $token = getAccessToken();
+    $url = "http://localhost:5294" . $endpoint;
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer $token",
+        "Content-Type: application/json"
+    ]);
+
+    if ($body !== null) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    }
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        die("API error: " . curl_error($ch));
+    }
+
+    curl_close($ch);
+
+    return json_decode($response, true);
 }
-
-$ch = curl_init("http://localhost:5294/api/translations");
-
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        "Authorization: Bearer $token"
-    ]
-]);
-
-$response = curl_exec($ch);
-curl_close($ch);
-
-echo "<pre>";
-echo htmlspecialchars($response);
-echo "</pre>";

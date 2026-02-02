@@ -3,15 +3,13 @@ bin/
 obj/
 *.user
 *.suo
-*.cache
-*.log
 
-# VS Code
-.vscode/
+# PHP
+vendor/
 
 # Secrets
 appsettings.Development.json
 .env
 
-# Docker
-*.tar
+# OS
+.DS_Store
