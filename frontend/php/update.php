@@ -1,49 +1,53 @@
 <?php
-function getToken() {
-    $url = "http://localhost:8081/realms/translation/protocol/openid-connect/token";
+require 'auth.php';   // must expose getAccessToken()
 
-    $data = [
-        "client_id" => "php-client",
-        "client_secret" => "php-secret",
-        "grant_type" => "client_credentials"
-    ];
+$result = null;
+$httpCode = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $sid    = $_POST['sid'] ?? '';
+    $langId = $_POST['langId'] ?? '';
+    $text   = $_POST['text'] ?? '';
+
+    if (!$sid || !$langId || !$text) {
+        die("❌ SID, LangId and Text are required");
+    }
+
+    $token = getAccessToken();
+    if (!$token) {
+        die("❌ Failed to get access token");
+    }
+
+    $payload = json_encode([
+        "sid"    => $sid,
+        "langId" => $langId,
+        "text"   => $text
+    ]);
+
+    $url = "http://localhost:5294/api/translations/$sid/$langId";
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query($data),
-        CURLOPT_RETURNTRANSFER => true
+        CURLOPT_CUSTOMREQUEST => "PUT",
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Bearer " . trim($token),
+            "Content-Type: application/json",
+            "Accept: application/json"
+        ],
+        CURLOPT_POSTFIELDS => $payload
     ]);
 
     $response = curl_exec($ch);
-    curl_close($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    return json_decode($response, true)["access_token"];
-}
+    if ($response === false) {
+        $result = ["error" => curl_error($ch)];
+    } else {
+        $result = $response ? json_decode($response, true) : "No Content";
+    }
 
-$result = null;
-
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $token = getToken();
-
-    $payload = json_encode([
-        "sid"    => $_POST["sid"],
-        "langId" => $_POST["langId"],
-        "text"   => $_POST["text"]
-    ]);
-
-    $ch = curl_init("http://localhost:5000/api/translations");
-    curl_setopt_array($ch, [
-        CURLOPT_CUSTOMREQUEST => "PUT",
-        CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer $token",
-            "Content-Type: application/json"
-        ],
-        CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_RETURNTRANSFER => true
-    ]);
-
-    $result = curl_exec($ch);
     curl_close($ch);
 }
 ?>
@@ -54,17 +58,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <title>Update Translation</title>
 </head>
 <body>
+
 <h2>Update Translation</h2>
 
 <form method="post">
-    SID (existing): <input name="sid" required><br><br>
-    Language: <input name="langId" value="en" required><br><br>
-    New Text: <input name="text" required><br><br>
-    <button>Update</button>
+    SID:<br>
+    <input name="sid" value="003" required><br><br>
+
+    Language:<br>
+    <input name="langId" value="en" required><br><br>
+
+    Text:<br>
+    <input name="text" value="welcome test UPDATED via PHP" required><br><br>
+
+    <button type="submit">Update</button>
 </form>
 
-<?php if ($result !== null): ?>
-<pre><?php echo $result === "" ? "Updated successfully (204)" : htmlspecialchars($result); ?></pre>
+<?php if ($httpCode !== null): ?>
+    <h3>HTTP Status: <?= $httpCode ?></h3>
+    <pre><?php print_r($result); ?></pre>
 <?php endif; ?>
 
 </body>
