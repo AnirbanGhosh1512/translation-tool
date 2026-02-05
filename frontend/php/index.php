@@ -1,17 +1,16 @@
 <?php
-require_once "translations.php";
+session_start();
 
-$translations = getTranslations();
-?>
+/**
+ * Entry point
 
-<h1>Translations</h1>
+if (isset($_SESSION['access_token'])) {
+    // User already authenticated
+    header("Location: dashboard.php");
+    exit;
+}
+     */
 
-<ul>
-<?php foreach ($translations as $t): ?>
-    <li>
-        <?= htmlspecialchars($t["sid"]) ?>
-        (<?= htmlspecialchars($t["langId"]) ?>):
-        <?= htmlspecialchars($t["text"]) ?>
-    </li>
-<?php endforeach; ?>
-</ul>
+// Not authenticated → login
+header("Location: login.php");
+exit;

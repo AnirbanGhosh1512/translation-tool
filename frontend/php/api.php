@@ -1,29 +1,28 @@
 <?php
-require_once "auth.php";
+require 'auth.php';
 
-function apiRequest($method, $endpoint, $body = null) {
+function apiRequest($method, $url, $body = null) {
     $token = getAccessToken();
-    $url = "http://localhost:5294" . $endpoint;
 
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    $headers = [
         "Authorization: Bearer $token",
         "Content-Type: application/json"
+    ];
+
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers
     ]);
 
-    if ($body !== null) {
+    if ($body) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
     }
 
     $response = curl_exec($ch);
-
-    if ($response === false) {
-        die("API error: " . curl_error($ch));
-    }
-
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    return json_decode($response, true);
+    return [$status, $response];
 }

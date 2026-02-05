@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
 using TranslationApi.Data;
@@ -26,18 +27,22 @@ var realm = "Translation";
 var authority = $"http://localhost:8081/realms/{realm}";
 
 
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = "http://localhost:8081/realms/Translation";
-        options.Audience = "translation-api";
         options.RequireHttpsMetadata = false;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
+
+            // 🔥 KEY FIX
             ValidateAudience = false,
+
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
 
@@ -55,7 +60,6 @@ builder.Services
                 if (realmAccess != null)
                 {
                     using var doc = JsonDocument.Parse(realmAccess.Value);
-
                     if (doc.RootElement.TryGetProperty("roles", out var roles))
                     {
                         foreach (var role in roles.EnumerateArray())

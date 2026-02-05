@@ -1,44 +1,35 @@
 <?php
-require 'auth.php';
+require 'api.php';
 
-$result = null;
+$msg = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $token = getAccessToken();
+if ($_POST) {
+    [$status] = apiRequest(
+        "POST",
+        "http://localhost:5294/api/translations",
+        [
+            "sid" => $_POST['sid'],
+            "langId" => $_POST['langId'],
+            "text" => $_POST['text']
+        ]
+    );
 
-    $payload = json_encode([
-        "sid"    => $_POST["sid"],
-        "langId" => $_POST["langId"], // ✅ FIXED
-        "text"   => $_POST["text"]
-    ]);
+    if ($status === 201) {
+        header("Location: index.php");
+        exit;
+    }
 
-    $ch = curl_init("http://localhost:5294/api/translations");
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer $token",
-            "Content-Type: application/json"
-        ],
-        CURLOPT_POSTFIELDS => $payload
-    ]);
-
-    $response = curl_exec($ch);
-    curl_close($ch);
-
-    $result = json_decode($response, true);
+    $msg = "Create failed";
 }
 ?>
 
 <h2>Create Translation</h2>
 
 <form method="post">
-    SID: <input name="sid" required><br><br>
-    Language: <input name="langId" value="en" required><br><br>
-    Text: <input name="text" required><br><br>
-    <button>Create</button>
+SID: <input name="sid" required><br><br>
+Lang: <input name="langId" value="en"><br><br>
+Text: <input name="text" required><br><br>
+<button>Create</button>
 </form>
 
-<?php if ($result): ?>
-<pre><?php print_r($result); ?></pre>
-<?php endif; ?>
+<p style="color:red"><?= $msg ?></p>

@@ -30,8 +30,6 @@ function getAccessToken()
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    echo "<pre>HTTP CODE: $httpCode\n$response</pre>";
-
     $json = json_decode($response, true);
 
     if (!isset($json["access_token"])) {

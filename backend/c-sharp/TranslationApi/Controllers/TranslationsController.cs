@@ -91,4 +91,15 @@ public class TranslationsController : ControllerBase
             Value = c.Value
         }));
     }
+
+    [Authorize]
+    [HttpGet("debug")]
+    public IActionResult Debug()
+    {
+        return Ok(User.Claims.Select(c => new
+        {
+            c.Type,
+            c.Value
+        }));
+    }
 }
