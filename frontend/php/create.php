@@ -1,35 +1,35 @@
 <?php
-require 'api.php';
+session_start();
 
-$msg = null;
-
-if ($_POST) {
-    [$status] = apiRequest(
-        "POST",
-        "http://localhost:5294/api/translations",
-        [
-            "sid" => $_POST['sid'],
-            "langId" => $_POST['langId'],
-            "text" => $_POST['text']
-        ]
-    );
-
-    if ($status === 201) {
-        header("Location: index.php");
-        exit;
-    }
-
-    $msg = "Create failed";
+if (!isset($_SESSION['access_token'])) {
+    header("Location: login.php");
+    exit;
 }
-?>
 
-<h2>Create Translation</h2>
+$data = [
+    "sid"    => $_POST['sid'],
+    "langId" => $_POST['langId'],
+    "text"   => $_POST['text']
+];
 
-<form method="post">
-SID: <input name="sid" required><br><br>
-Lang: <input name="langId" value="en"><br><br>
-Text: <input name="text" required><br><br>
-<button>Create</button>
-</form>
+$ch = curl_init("http://localhost:5294/api/translations");
 
-<p style="color:red"><?= $msg ?></p>
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+        "Authorization: Bearer " . $_SESSION['access_token'],
+        "Content-Type: application/json"
+    ],
+    CURLOPT_POSTFIELDS => json_encode($data)
+]);
+
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($httpCode !== 201 && $httpCode !== 200) {
+    die("Create failed: " . htmlspecialchars($response));
+}
+
+header("Location: dashboard.php");
