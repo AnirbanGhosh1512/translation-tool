@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-
 if (!isset($_SESSION['access_token'])) {
     header("Location: login.php");
     exit;
@@ -36,20 +35,6 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $rows = json_decode($response, true);
-
-$langs = [];
-
-foreach ($rows as $row) {
-    $langs[$row['langId']] = true;
-}
-
-ksort($langs); // nice ordering
-
-$selectedLang = $_GET['lang'] ?? 'en';
-
-$filteredRows = array_filter($rows, function ($row) use ($selectedLang) {
-    return $row['langId'] === $selectedLang;
-});
 
 if ($httpCode !== 200 || !is_array($rows)) {
     echo "<h3>API Error</h3>";
@@ -317,17 +302,6 @@ if ($httpCode !== 200 || !is_array($rows)) {
             </span>
         </div>
 
-        <form method="GET" style="display:inline;">
-            <label><strong>Select language:</strong></label>
-            <select name="lang" onchange="this.form.submit()">
-                <?php foreach ($langs as $lang => $_): ?>
-                    <option value="<?= htmlspecialchars($lang) ?>"
-                        <?= $lang === $selectedLang ? 'selected' : '' ?>>
-                        <?= strtoupper($lang) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </form>
         <button class="btn primary" onclick="openModal()">➕ Add Translation</button>
 
         <div class="card">
@@ -337,22 +311,23 @@ if ($httpCode !== 200 || !is_array($rows)) {
                     <thead>
                         <tr>
                             <th style="width: 100px;">SID</th>
+                            <!--<th style="width: 100px;">Lang</th>-->
                             <th>Text</th>
+                            <!--<th class="text-center" style="width: 150px;">Actions</th>-->
                         </tr>
                     </thead>
                     <tbody>
 
                     <tbody>
-                    <?php foreach ($filteredRows as $row): ?>
-                        <tr ondblclick="openEdit(
-                            '<?= htmlspecialchars($row['sid'], ENT_QUOTES) ?>',
-                            '<?= htmlspecialchars($row['langId'], ENT_QUOTES) ?>',
-                            `<?= htmlspecialchars($row['text'], ENT_QUOTES) ?>`
-                        )">
-                            <td><?= htmlspecialchars($row['sid']) ?></td>
-                            <td><?= htmlspecialchars($row['text']) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                        <?php foreach ($rows as $row): ?>
+                            <tr ondblclick="openEdit(
+                                '<?= htmlspecialchars($row['sid'], ENT_QUOTES) ?>',
+                                `<?= htmlspecialchars($row['text'], ENT_QUOTES) ?>`
+                            )">
+                                <td><?= htmlspecialchars($row['sid']) ?></td>
+                                <td><?= htmlspecialchars($row['text']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
 
