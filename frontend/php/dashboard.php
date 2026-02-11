@@ -37,6 +37,10 @@ curl_close($ch);
 
 $rows = json_decode($response, true);
 
+usort($rows, function ($a, $b) {
+    return strcmp($a['sid'], $b['sid']);
+});
+
 $langs = [];
 
 foreach ($rows as $row) {
@@ -297,6 +301,18 @@ if ($httpCode !== 200 || !is_array($rows)) {
             margin-top: 15px;
         }
 
+        .modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .right-actions {
+            display: flex;
+            gap: 10px;
+        }
+
         .save {
             background: #3182ce;
             color: #fff;
@@ -328,7 +344,7 @@ if ($httpCode !== 200 || !is_array($rows)) {
                 <?php endforeach; ?>
             </select>
         </form>
-        <button class="btn primary" onclick="openModal()">➕ Add Translation</button>
+        <button type="button" class="btn primary" onclick="openAddModal()">➕ Add Translation</button>
 
         <div class="card">
             <div class="card-body">
@@ -344,13 +360,13 @@ if ($httpCode !== 200 || !is_array($rows)) {
 
                     <tbody>
                     <?php foreach ($filteredRows as $row): ?>
-                        <tr ondblclick="openEdit(
+                        <tr id="row-<?= htmlspecialchars($row['sid']) ?>" ondblclick="openEdit(
                             '<?= htmlspecialchars($row['sid'], ENT_QUOTES) ?>',
                             '<?= htmlspecialchars($row['langId'], ENT_QUOTES) ?>',
                             `<?= htmlspecialchars($row['text'], ENT_QUOTES) ?>`
                         )">
                             <td><?= htmlspecialchars($row['sid']) ?></td>
-                            <td><?= htmlspecialchars($row['text']) ?></td>
+                            <td class="text-cell"><?= htmlspecialchars($row['text']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -370,14 +386,14 @@ if ($httpCode !== 200 || !is_array($rows)) {
                 <input type="text" name="sid" required>
 
                 <label>Language</label>
-                <input type="text" name="langId" required>
+                <input type="text" name="langId" id="addLangId" readonly>
 
                 <label>Text</label>
                 <textarea name="text" required></textarea>
 
                 <div class="modal-actions">
                     <button type="submit" class="btn primary">Save</button>
-                    <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn secondary" onclick="closeAddModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -394,17 +410,38 @@ if ($httpCode !== 200 || !is_array($rows)) {
             <textarea id="editText"></textarea>
 
             <div class="modal-actions">
-                <button type="button" onclick="closeModal()">Cancel</button>
-                <button type="button" class="save" onclick="saveEdit()">Save</button>
+                    <button type="button"
+                    class="btn btn-danger"
+                    onclick="deleteSid()">
+                🗑 Delete SID
+            </button>
+
+            <div class="right-actions">
+                <button type="button"
+                        class="btn btn-primary"
+                        onclick="saveEdit()">
+                    Save
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        onclick="closeModal()">
+                    Cancel
+                </button>
+            </div>
             </div>
         </div>
     </div>
     <script>
-        function openModal() {
+        function openAddModal() {
+            const selectedLang =
+                document.querySelector('select[name="lang"]').value;
+
+            document.getElementById('addLangId').value = selectedLang;
             document.getElementById('modal').style.display = 'flex';
         }
 
-        function closeModal() {
+        function closeAddModal() {
             document.getElementById('modal').style.display = 'none';
         }
     </script>
@@ -422,58 +459,68 @@ if ($httpCode !== 200 || !is_array($rows)) {
         }
 
         function saveEdit() {
-            const sid = document.getElementById('editSid').value;
-            const lang = document.getElementById('editLang').value;
-            const text = document.getElementById('editText').value;
+            const sid = editSid.value;
+            const lang = editLang.value;
+            const text = editText.value;
 
             fetch(`http://localhost:5294/api/translations/${sid}/${lang}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        sid: sid,
-                        langId: lang,
-                        text: text
-                    })
-                })
-                .then(async res => {
-                    if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(`HTTP ${res.status}: ${text}`);
-                    }
-                    closeModal();
-                    location.reload();
-                })
-                .catch(err => {
-                    alert("Save failed:\n" + err.message);
-                    console.error("PUT error:", err);
-                });
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sid, langId: lang, text })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Save failed");
+                document
+                    .querySelector(`#row-${sid} .text-cell`)
+                    .innerText = text;
+
+                closeModal(); // 👈 modal closes, row stays in place
+            })
+            .catch(err => {
+                alert("Save failed");
+                console.error(err);
+            });
         }
     </script>
 
     <script>
-        function deleteTranslation(sid, lang) {
-            if (!confirm("Delete this translation?")) return;
+    function deleteSid() {
+        const sid = document.getElementById('editSid').value;
 
-            fetch(`http://localhost:5294/api/translations/${sid}/${lang}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>'
-                    }
-                })
-                .then(res => {
-                    if (!res.ok) throw new Error("Delete failed");
-                    location.reload();
-                })
-                .catch(err => {
-                    alert("Delete failed");
-                    console.error(err);
-                });
+        if (!sid) {
+            alert("SID missing");
+            return;
         }
-    </script>
 
+        if (!confirm(`Delete SID "${sid}" and ALL its translations?`)) {
+            return;
+        }
+
+        fetch(`http://localhost:5294/api/translations/${encodeURIComponent(sid)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>'
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Delete failed");
+        })
+        .then(() => {
+            // Remove row from table
+            const row = document.getElementById(`row-${sid}`);
+            if (row) row.remove();
+
+            closeModal(); // correct function
+        })
+        .catch(err => {
+            alert(err.message);
+            console.error(err);
+        });
+    }
+    </script>
 </body>
 
 </html>

@@ -87,6 +87,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<ITranslationService, TranslationService>();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();

@@ -1,52 +1,41 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TranslationApi.Data;
-
-namespace TranslationApi.Controllers;
 
 [Authorize(Roles = "translator")]
 [ApiController]
 [Route("api/translations")]
 public class TranslationsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly ITranslationService _service;
 
-    public TranslationsController(AppDbContext context)
+    public TranslationsController(ITranslationService service)
     {
-        _context = context;
+        _service = service;
     }
 
     // GET: api/translations
     [HttpGet]
-    public async Task<IActionResult> Get() => Ok(await _context.Translations.ToListAsync());
-
+    public async Task<IActionResult> Get()
+        => Ok(await _service.GetAllAsync());
 
     // GET: api/translations/{sid}/{langId}
     [HttpGet("{sid}/{langId}")]
     public async Task<IActionResult> Get(string sid, string langId)
     {
-        var translation = await _context.Translations
-            .FindAsync(sid, langId);
-
-        if (translation == null)
-            return NotFound();
-
-        return Ok(translation);
+        var translation = await _service.GetAsync(sid, langId);
+        return translation == null ? NotFound() : Ok(translation);
     }
 
     // POST: api/translations
     [HttpPost]
     public async Task<IActionResult> Create(Translation translation)
     {
-        _context.Translations.Add(translation);
-        await _context.SaveChangesAsync();
+        var created = await _service.CreateAsync(translation);
 
         return CreatedAtAction(
             nameof(Get),
-            new { sid = translation.SID, langId = translation.LangId },
-            translation
+            new { sid = created.SID, langId = created.LangId },
+            created
         );
     }
 
@@ -57,29 +46,31 @@ public class TranslationsController : ControllerBase
         string langId,
         Translation updated)
     {
-        if (sid != updated.SID || langId != updated.LangId)
-            return BadRequest();
-
-        _context.Entry(updated).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-
+        await _service.UpdateAsync(sid, langId, updated);
         return NoContent();
     }
 
     // DELETE: api/translations/{sid}/{langId}
     [HttpDelete("{sid}/{langId}")]
-    public async Task<IActionResult> Delete(string sid, string langId)
+    public async Task<IActionResult> DeleteTranslation(string sid, string langId)
     {
-        var translation = await _context.Translations
-            .FindAsync(sid, langId);
-
-        if (translation == null)
-            return NotFound();
-
-        _context.Translations.Remove(translation);
-        await _context.SaveChangesAsync();
-
+        await _service.DeleteTranslationAsync(sid, langId);
         return NoContent();
+    }
+
+    // ⭐ DELETE SID (ALL LANGUAGES)
+    [HttpDelete("{sid}")]
+    public async Task<IActionResult> DeleteSid(string sid)
+    {
+        try
+        {
+            await _service.DeleteSidAsync(sid);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
     [HttpGet("claims")]
@@ -87,8 +78,8 @@ public class TranslationsController : ControllerBase
     {
         return Ok(User.Claims.Select(c => new
         {
-            Type = c.Type,
-            Value = c.Value
+            c.Type,
+            c.Value
         }));
     }
 
@@ -103,3 +94,6 @@ public class TranslationsController : ControllerBase
         }));
     }
 }
+
+
+
