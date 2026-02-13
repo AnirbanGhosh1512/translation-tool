@@ -34,18 +34,15 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.Authority = "http://localhost:8081/realms/Translation";
+        options.Audience = "translation-client";
         options.RequireHttpsMetadata = false;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-
-            // 🔥 KEY FIX
-            ValidateAudience = false,
-
+            ValidateAudience = false, // often false for client credentials
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-
             NameClaimType = "preferred_username",
             RoleClaimType = ClaimTypes.Role
         };
@@ -54,20 +51,37 @@ builder.Services
         {
             OnTokenValidated = context =>
             {
-                var identity = context.Principal!.Identity as ClaimsIdentity;
+                var identity = context.Principal?.Identity as ClaimsIdentity;
+                if (identity == null) return Task.CompletedTask;
 
-                var realmAccess = context.Principal.FindFirst("realm_access");
-                if (realmAccess != null)
+                void AddRolesFromJson(string claimValue)
                 {
-                    using var doc = JsonDocument.Parse(realmAccess.Value);
+                    if (string.IsNullOrEmpty(claimValue)) return;
+
+                    using var doc = JsonDocument.Parse(claimValue);
                     if (doc.RootElement.TryGetProperty("roles", out var roles))
                     {
                         foreach (var role in roles.EnumerateArray())
                         {
-                            identity!.AddClaim(
-                                new Claim(ClaimTypes.Role, role.GetString()!)
-                            );
+                            var roleName = role.GetString();
+                            if (!string.IsNullOrEmpty(roleName))
+                                identity.AddClaim(new Claim(ClaimTypes.Role, roleName));
                         }
+                    }
+                }
+
+                // Map realm roles
+                AddRolesFromJson(context.Principal.FindFirst("realm_access")?.Value);
+
+                // Map client roles
+                var resourceAccess = context.Principal.FindFirst("resource_access")?.Value;
+                if (!string.IsNullOrEmpty(resourceAccess))
+                {
+                    using var doc = JsonDocument.Parse(resourceAccess);
+                    if (doc.RootElement.TryGetProperty("translation-client", out var clientRoles))
+                    {
+                        var roleName = clientRoles.GetRawText();
+                        AddRolesFromJson(clientRoles.GetRawText());
                     }
                 }
 
@@ -75,6 +89,8 @@ builder.Services
             }
         };
     });
+
+
 
 builder.Services.AddCors(options =>
 {

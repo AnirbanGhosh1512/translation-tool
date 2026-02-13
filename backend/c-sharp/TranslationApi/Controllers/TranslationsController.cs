@@ -1,7 +1,10 @@
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-[Authorize(Roles = "translator")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "translator")]
 [ApiController]
 [Route("api/translations")]
 public class TranslationsController : ControllerBase
@@ -92,6 +95,16 @@ public class TranslationsController : ControllerBase
             c.Type,
             c.Value
         }));
+    }
+
+    [HttpGet("debug-auth")]
+    public IActionResult DebugAuth()
+    {
+        return Ok(new   
+        {
+            IsAuthenticated = User.Identity?.IsAuthenticated,
+            Roles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value)
+        });
     }
 }
 

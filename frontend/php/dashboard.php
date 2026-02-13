@@ -37,6 +37,15 @@ curl_close($ch);
 
 $rows = json_decode($response, true);
 
+if ($httpCode !== 200 || !is_array($rows)) {
+    echo "<h3>API Error</h3>";
+    echo "<pre>";
+    echo "HTTP Code: $httpCode\n";
+    echo htmlspecialchars($response);
+    echo "</pre>";
+    exit;
+}
+
 usort($rows, function ($a, $b) {
     return strcmp($a['sid'], $b['sid']);
 });

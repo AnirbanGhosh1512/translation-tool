@@ -23,5 +23,22 @@ services:
     ports:
       - "8081:8080"
 
+  translation-api:
+    image: jedox-translation-tool-backend-api
+    container_name: translation-api
+    depends_on:
+      - postgres
+      - keycloak
+    environment:
+      # Use Docker service name 'translation-postgres' as host
+      ConnectionStrings__DefaultConnection: "Host=translation-postgres;Port=5432;Database=translationdb;Username=translationuser;Password=translationpass;"
+      # Optional: Keycloak config
+      Keycloak__BaseUrl: "http://keycloak:8080"
+      Keycloak__Realm: "Translation"
+      Keycloak__ClientId: "translation-client"
+      Keycloak__ClientSecret: "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN"
+    ports:
+      - "5294:8080"
+
 volumes:
   pgdata:

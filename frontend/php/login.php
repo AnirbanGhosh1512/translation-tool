@@ -1,4 +1,6 @@
 <?php
+xdebug_break();
+
 session_start();
 
 /**

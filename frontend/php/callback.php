@@ -7,7 +7,7 @@ session_start();
 $keycloakBaseUrl = "http://localhost:8081";
 $realm           = "Translation";
 $clientId        = "translation-client";
-$clientSecret    = "CpsjW8ekCE3VbxCGAD3VyvDF5MV7leIs"; // MUST belong to translation-client
+$clientSecret    = "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN"; // MUST belong to translation-client
 $redirectUri     = "http://localhost:8000/callback.php";
 
 /**
