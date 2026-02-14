@@ -1,0 +1,81 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: translation-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: translationdb
+      POSTGRES_USER: translationuser
+      POSTGRES_PASSWORD: translationpass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - translation-network
+
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
+    restart: always
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8081:8080"
+    networks:
+      - translation-network
+
+
+
+  translation-api:
+    build:
+      context: ./backend/c-sharp/TranslationApi
+      dockerfile: Dockerfile
+    container_name: translation-api
+    restart: always
+    depends_on:
+      - postgres
+      - keycloak
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=translationdb;Username=translationuser;Password=translationpass;"
+      Keycloak__BaseUrl: "http://keycloak:8080"
+      Keycloak__Realm: "Translation"
+      Keycloak__ClientId: "translation-client"
+      Keycloak__ClientSecret: "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN"
+    ports:
+      - "5294:8080"
+    networks:
+      - translation-network
+
+
+  php:
+    build:
+      context: ./frontend/php
+      dockerfile: Dockerfile
+    container_name: translation-php
+    restart: always
+    depends_on:
+      - translation-api
+    environment:
+      KEYCLOAK_PUBLIC_URL: http://localhost:8081
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      XDEBUG_MODE: debug
+      XDEBUG_CONFIG: client_host=host.docker.internal client_port=9003
+    ports:
+      - "8000:80"
+    volumes:
+      - ./frontend/php:/var/www/html   # 🔥 live code mount
+    networks:
+      - translation-network
+
+
+volumes:
+  pgdata:
+
+networks:
+  translation-network:

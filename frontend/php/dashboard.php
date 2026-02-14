@@ -15,7 +15,7 @@ if (isset($payload['realm_access']['roles'])) {
     $isTranslator = in_array('translator', $payload['realm_access']['roles'], true);
 }
 
-$apiUrl = "http://localhost:5294/api/translations";
+$apiUrl = "http://translation-api:8080/api/translations";
 
 $ch = curl_init($apiUrl);
 curl_setopt_array($ch, [

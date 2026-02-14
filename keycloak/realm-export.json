@@ -1,0 +1,21 @@
+{
+    "realm": "Translation",
+    "enabled": true,
+    "clients": [
+      {
+        "clientId": "translation-client",
+        "enabled": true,
+        "protocol": "openid-connect",
+        "publicClient": false,
+        "secret": "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN",
+        "redirectUris": [
+          "http://localhost:8000/*"
+        ],
+        "webOrigins": [
+          "*"
+        ],
+        "standardFlowEnabled": true
+      }
+    ]
+  }
+  

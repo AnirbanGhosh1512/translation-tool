@@ -4,11 +4,17 @@ session_start();
 /**
  * CONFIG
  */
-$keycloakBaseUrl = "http://localhost:8081";
-$realm           = "Translation";
-$clientId        = "translation-client";
-$clientSecret    = "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN"; // MUST belong to translation-client
-$redirectUri     = "http://localhost:8000/callback.php";
+
+// Public URL (used for redirect in login.php)
+$keycloakPublicUrl = 'http://localhost:8081';
+
+// Internal Docker URL (used for server-to-server calls)
+$keycloakInternalUrl = 'http://keycloak:8080';
+
+$realm        = "Translation";
+$clientId     = "translation-client";
+$clientSecret = "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN";
+$redirectUri  = "http://localhost:8000/callback.php";
 
 /**
  * 1️⃣ Validate authorization code
@@ -21,19 +27,19 @@ if (!isset($_GET['code'])) {
 $code = $_GET['code'];
 
 /**
- * 2️⃣ Token endpoint
+ * 2️⃣ Token endpoint (IMPORTANT CHANGE HERE)
  */
-$tokenUrl = "{$keycloakBaseUrl}/realms/{$realm}/protocol/openid-connect/token";
+$tokenUrl = "{$keycloakInternalUrl}/realms/{$realm}/protocol/openid-connect/token";
 
 /**
  * 3️⃣ Token request payload
  */
 $postData = [
-    "grant_type"    => "authorization_code",
-    "client_id"     => $clientId,
-    "client_secret"=> $clientSecret,
-    "code"          => $code,
-    "redirect_uri"  => $redirectUri
+    "grant_type"     => "authorization_code",
+    "client_id"      => $clientId,
+    "client_secret"  => $clientSecret,
+    "code"           => $code,
+    "redirect_uri"   => $redirectUri
 ];
 
 /**
@@ -53,7 +59,6 @@ $response = curl_exec($ch);
 if ($response === false) {
     die("cURL error: " . curl_error($ch));
 }
-
 
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);

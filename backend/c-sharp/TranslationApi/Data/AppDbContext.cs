@@ -13,5 +13,16 @@ public class AppDbContext : DbContext
     {
         modelBuilder.Entity<Translation>()
             .HasKey(t => new { t.SID, t.LangId });
+
+        modelBuilder.Entity<Translation>(entity =>
+        {
+            entity.ToTable("translations");   // ⭐ IMPORTANT
+
+            entity.HasKey(t => new { t.SID, t.LangId });
+
+            entity.Property(t => t.SID).HasColumnName("sid");
+            entity.Property(t => t.LangId).HasColumnName("langid");
+            entity.Property(t => t.Text).HasColumnName("text");
+        });
     }
 }

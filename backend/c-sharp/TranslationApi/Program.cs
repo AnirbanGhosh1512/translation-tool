@@ -33,13 +33,13 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = "http://localhost:8081/realms/Translation";
+        options.Authority = "http://keycloak:8080/realms/Translation";
         options.Audience = "translation-client";
         options.RequireHttpsMetadata = false;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
+            ValidateIssuer = false,
             ValidateAudience = false, // often false for client credentials
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,

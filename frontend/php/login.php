@@ -3,7 +3,8 @@ xdebug_break();
 
 session_start();
 
-/**
+/**docker stop $(docker ps -q)
+
  * CONFIG
  */
 $keycloakBaseUrl = "http://localhost:8081";
