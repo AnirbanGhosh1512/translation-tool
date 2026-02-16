@@ -58,11 +58,31 @@ foreach ($rows as $row) {
 
 ksort($langs); // nice ordering
 
-$selectedLang = $_GET['lang'] ?? 'en';
+//$selectedLang = $_GET['lang'] ?? 'en';
+
+// If a lang is selected via GET, store it in session
+if (isset($_GET['lang'])) {
+    $_SESSION['selected_lang'] = $_GET['lang'];
+}
+
+// Use the session value if available, fallback to 'en'
+$selectedLang = $_SESSION['selected_lang'] ?? 'en';
+
 
 $filteredRows = array_filter($rows, function ($row) use ($selectedLang) {
     return $row['langId'] === $selectedLang;
 });
+
+// Handle AJAX request: return only <tbody> for smooth reload
+if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+    foreach ($filteredRows as $row) {
+        echo "<tr id='row-{$row['sid']}'>
+                <td>{$row['sid']}</td>
+                <td class='text-cell'>{$row['text']}</td>
+              </tr>";
+    }
+    exit;
+}
 
 if ($httpCode !== 200 || !is_array($rows)) {
     echo "<h3>API Error</h3>";
@@ -367,17 +387,13 @@ if ($httpCode !== 200 || !is_array($rows)) {
                     </thead>
                     <tbody>
 
-                    <tbody>
-                    <?php foreach ($filteredRows as $row): ?>
-                        <tr id="row-<?= htmlspecialchars($row['sid']) ?>" ondblclick="openEdit(
-                            '<?= htmlspecialchars($row['sid'], ENT_QUOTES) ?>',
-                            '<?= htmlspecialchars($row['langId'], ENT_QUOTES) ?>',
-                            `<?= htmlspecialchars($row['text'], ENT_QUOTES) ?>`
-                        )">
-                            <td><?= htmlspecialchars($row['sid']) ?></td>
-                            <td class="text-cell"><?= htmlspecialchars($row['text']) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                    <tbody id="translationsTableBody">
+                        <?php foreach ($filteredRows as $row): ?>
+                            <tr id="row-<?= htmlspecialchars($row['sid']) ?>">
+                                <td><?= htmlspecialchars($row['sid']) ?></td>
+                                <td class="text-cell"><?= htmlspecialchars($row['text']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
 
@@ -395,10 +411,10 @@ if ($httpCode !== 200 || !is_array($rows)) {
                 <input type="text" name="sid" required>
 
                 <label>Language</label>
-                <input type="text" name="langId" id="addLangId" readonly>
+                <input type="text" name="langId" id="addLangId" value="<?= htmlspecialchars($langId) ?>" readonly>
 
                 <label>Text</label>
-                <textarea name="text" required></textarea>
+                <textarea name="text"></textarea>
 
                 <div class="modal-actions">
                     <button type="submit" class="btn primary">Save</button>
@@ -456,6 +472,19 @@ if ($httpCode !== 200 || !is_array($rows)) {
     </script>
 
     <script>
+
+        // --- Event delegation: double-click to edit any row ---
+        document.getElementById('translationsTableBody').addEventListener('dblclick', function(e){
+            const row = e.target.closest('tr');
+            if(!row) return;
+
+            const sid = row.id.replace('row-','');
+            const text = row.querySelector('.text-cell').innerText;
+            const lang = document.querySelector('select[name="lang"]').value;
+
+            openEdit(sid, lang, text);
+        });
+
         function openEdit(sid, lang, text) {
             document.getElementById('editSid').value = sid;
             document.getElementById('editLang').value = lang;
@@ -468,28 +497,44 @@ if ($httpCode !== 200 || !is_array($rows)) {
         }
 
         function saveEdit() {
-            const sid = editSid.value;
-            const lang = editLang.value;
-            const text = editText.value;
+            const sid = document.getElementById('editSid').value;
+            const lang = document.getElementById('editLang').value;
+            let text = document.getElementById('editText').value;
 
-            fetch(`http://localhost:5294/api/translations/${sid}/${lang}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>',
-                    'Content-Type': 'application/json'
-                },
+            if (!text.trim()) {
+                text = `Please add some text on "${lang}" in text area`;
+            }
+
+            fetch('save_translation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sid, langId: lang, text })
             })
-            .then(res => {
-                if (!res.ok) throw new Error("Save failed");
-                document
-                    .querySelector(`#row-${sid} .text-cell`)
-                    .innerText = text;
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                
+                    closeModal();
 
-                closeModal(); // 👈 modal closes, row stays in place
+                    // --- Reload table tbody only ---
+                fetch(window.location.pathname+'?lang='+encodeURIComponent(lang)+'&ajax=1')
+                    .then(res=>res.text())
+                    .then(html=>{
+                        document.getElementById('translationsTableBody').innerHTML = html;
+                    })
+                    .catch(err=>console.error('Table reload failed:', err));
+
+                    // ✅ Keep dropdown selection consistent
+                    const dropdown = document.querySelector('select[name="lang"]');
+                    if (dropdown) dropdown.value = data.langId;
+
+                } else {
+                    alert('Save failed: ' + data.error);
+                    console.error('API error:', data.error);
+                }
             })
             .catch(err => {
-                alert("Save failed");
+                alert('Save failed (network or JS error)');
                 console.error(err);
             });
         }

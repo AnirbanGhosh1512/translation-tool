@@ -8,6 +8,6 @@ public class Translation
     [Required]
     public string LangId { get; set; } = string.Empty;
 
-    [Required]
+    //[Required]
     public string Text { get; set; } = string.Empty;
 }

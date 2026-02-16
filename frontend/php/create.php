@@ -5,14 +5,17 @@ if (!isset($_SESSION['access_token'])) {
     header("Location: login.php");
     exit;
 }
-
+  
 $data = [
     "sid"    => $_POST['sid'],
     "langId" => $_POST['langId'],
     "text"   => $_POST['text']
 ];
 
-$ch = curl_init("http://localhost:5294/api/translations");
+//$ch = curl_init("http://localhost:5294/api/translations");
+
+$ch = curl_init("http://translation-api:8080/api/translations");
+
 
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -26,10 +29,17 @@ curl_setopt_array($ch, [
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+
 
 if ($httpCode !== 201 && $httpCode !== 200) {
     die("Create failed: " . htmlspecialchars($response));
 }
 
+// Store selected language in session for persistence.
+$_SESSION['selected_lang'] = $_POST['langId'];
+
+// Redirect back to dashboard
 header("Location: dashboard.php");
+
+//header("Location: dashboard.php?langId=" . urlencode($_POST['langId']));
+

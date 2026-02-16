@@ -33,6 +33,9 @@ public class TranslationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Translation translation)
     {
+        if (string.IsNullOrWhiteSpace(translation.Text))
+            translation.Text = $"Please add some text on \"{translation.LangId}\" in text area";
+
         var created = await _service.CreateAsync(translation);
 
         return CreatedAtAction(
@@ -49,6 +52,9 @@ public class TranslationsController : ControllerBase
         string langId,
         Translation updated)
     {
+        if (string.IsNullOrWhiteSpace(updated.Text))
+            updated.Text = $"Please add some text on \"{updated.LangId}\" in text area";
+
         await _service.UpdateAsync(sid, langId, updated);
         return NoContent();
     }

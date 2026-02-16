@@ -1,21 +1,49 @@
 {
-    "realm": "Translation",
-    "enabled": true,
-    "clients": [
+  "realm": "Translation",
+  "enabled": true,
+
+  "roles": {
+    "realm": [
       {
-        "clientId": "translation-client",
-        "enabled": true,
-        "protocol": "openid-connect",
-        "publicClient": false,
-        "secret": "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN",
-        "redirectUris": [
-          "http://localhost:8000/*"
-        ],
-        "webOrigins": [
-          "*"
-        ],
-        "standardFlowEnabled": true
+        "name": "translator",
+        "description": "Translator role"
       }
     ]
-  }
-  
+  },
+
+  "clients": [
+    {
+      "clientId": "translation-client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN",
+      "redirectUris": [
+        "http://localhost:8000/*"
+      ],
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true
+    }
+  ],
+
+  "users": [
+    {
+      "username": "guest",
+      "enabled": true,
+      "email": "guest@example.com",
+      "firstName": "Guest",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "guest@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "translator"
+      ]
+    }
+  ]
+}
