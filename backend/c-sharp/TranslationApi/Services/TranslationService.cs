@@ -63,4 +63,28 @@ public class TranslationService : ITranslationService
         _context.Translations.RemoveRange(rows);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Translation> CreateOrUpdateAsync(Translation translation)
+    {
+        // Check if a translation with the same SID + LangId exists
+        var existing = await _context.Translations
+            .FirstOrDefaultAsync(t => t.SID == translation.SID && t.LangId == translation.LangId);
+
+        if (existing != null)
+        {
+            // Update existing record
+            existing.Text = translation.Text;
+            _context.Translations.Update(existing);
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+        else
+        {
+            // Insert new record
+            _context.Translations.Add(translation);
+            await _context.SaveChangesAsync();
+            return translation;
+        }
+    }
+
 }

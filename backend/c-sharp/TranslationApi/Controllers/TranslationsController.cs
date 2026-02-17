@@ -36,7 +36,7 @@ public class TranslationsController : ControllerBase
         if (string.IsNullOrWhiteSpace(translation.Text))
             translation.Text = $"Please add some text on \"{translation.LangId}\" in text area";
 
-        var created = await _service.CreateAsync(translation);
+        var created = await _service.CreateOrUpdateAsync(translation);
 
         return CreatedAtAction(
             nameof(Get),

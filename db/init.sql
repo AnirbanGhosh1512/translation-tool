@@ -12,3 +12,7 @@ VALUES
 ('GoodMorningID', 'de', 'Guten Morgen'),
 ('GoodByeID', 'fr', 'Bonjour');
 
+--Alter table
+ALTER TABLE translations
+ADD CONSTRAINT unique_id_lang UNIQUE (SID, LangId);
+

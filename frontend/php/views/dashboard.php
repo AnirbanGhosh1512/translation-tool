@@ -1,6 +1,7 @@
 <?php
 session_start();
 
+
 if (!isset($_SESSION['access_token'])) {
     header("Location: login.php");
     exit;
@@ -14,7 +15,7 @@ if (isset($payload['realm_access']['roles'])) {
     $isTranslator = in_array('translator', $payload['realm_access']['roles'], true);
 }
 
-$apiUrl = "http://localhost:5294/api/translations";
+$apiUrl = "http://translation-api:8080/api/translations";
 
 $ch = curl_init($apiUrl);
 curl_setopt_array($ch, [
@@ -35,6 +36,51 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $rows = json_decode($response, true);
+
+if ($httpCode !== 200 || !is_array($rows)) {
+    echo "<h3>API Error</h3>";
+    echo "<pre>";
+    echo "HTTP Code: $httpCode\n";
+    echo htmlspecialchars($response);
+    echo "</pre>";
+    exit;
+}
+
+usort($rows, function ($a, $b) {
+    return strcmp($a['sid'], $b['sid']);
+});
+
+$langs = [];
+
+foreach ($rows as $row) {
+    $langs[$row['langId']] = true;
+}
+
+ksort($langs); 
+
+// If a lang is selected via GET, store it in session
+if (isset($_GET['lang'])) {
+    $_SESSION['selected_lang'] = $_GET['lang'];
+}
+
+// Use the session value if available, fallback to 'en'
+$selectedLang = $_SESSION['selected_lang'] ?? 'en';
+
+
+$filteredRows = array_filter($rows, function ($row) use ($selectedLang) {
+    return $row['langId'] === $selectedLang;
+});
+
+// Handle AJAX request: return only <tbody> for smooth reload
+if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+    foreach ($filteredRows as $row) {
+        echo "<tr id='row-{$row['sid']}'>
+                <td>{$row['sid']}</td>
+                <td class='text-cell'>{$row['text']}</td>
+              </tr>";
+    }
+    exit;
+}
 
 if ($httpCode !== 200 || !is_array($rows)) {
     echo "<h3>API Error</h3>";
@@ -282,6 +328,18 @@ if ($httpCode !== 200 || !is_array($rows)) {
             margin-top: 15px;
         }
 
+        .modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .right-actions {
+            display: flex;
+            gap: 10px;
+        }
+
         .save {
             background: #3182ce;
             color: #fff;
@@ -302,7 +360,18 @@ if ($httpCode !== 200 || !is_array($rows)) {
             </span>
         </div>
 
-        <button class="btn primary" onclick="openModal()">➕ Add Translation</button>
+        <form method="GET" style="display:inline;">
+            <label><strong>Select language:</strong></label>
+            <select name="lang" onchange="this.form.submit()">
+                <?php foreach ($langs as $lang => $_): ?>
+                    <option value="<?= htmlspecialchars($lang) ?>"
+                        <?= $lang === $selectedLang ? 'selected' : '' ?>>
+                        <?= strtoupper($lang) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </form>
+        <button type="button" class="btn primary" onclick="openAddModal()">➕ Add Translation</button>
 
         <div class="card">
             <div class="card-body">
@@ -311,21 +380,16 @@ if ($httpCode !== 200 || !is_array($rows)) {
                     <thead>
                         <tr>
                             <th style="width: 100px;">SID</th>
-                            <!--<th style="width: 100px;">Lang</th>-->
                             <th>Text</th>
-                            <!--<th class="text-center" style="width: 150px;">Actions</th>-->
                         </tr>
                     </thead>
                     <tbody>
 
-                    <tbody>
-                        <?php foreach ($rows as $row): ?>
-                            <tr ondblclick="openEdit(
-                                '<?= htmlspecialchars($row['sid'], ENT_QUOTES) ?>',
-                                `<?= htmlspecialchars($row['text'], ENT_QUOTES) ?>`
-                            )">
+                    <tbody id="translationsTableBody">
+                        <?php foreach ($filteredRows as $row): ?>
+                            <tr id="row-<?= htmlspecialchars($row['sid']) ?>">
                                 <td><?= htmlspecialchars($row['sid']) ?></td>
-                                <td><?= htmlspecialchars($row['text']) ?></td>
+                                <td class="text-cell"><?= htmlspecialchars($row['text']) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -345,14 +409,14 @@ if ($httpCode !== 200 || !is_array($rows)) {
                 <input type="text" name="sid" required>
 
                 <label>Language</label>
-                <input type="text" name="langId" required>
+                <input type="text" name="langId" id="addLangId" value="<?= htmlspecialchars($langId) ?>" readonly>
 
                 <label>Text</label>
-                <textarea name="text" required></textarea>
+                <textarea name="text"></textarea>
 
                 <div class="modal-actions">
                     <button type="submit" class="btn primary">Save</button>
-                    <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn secondary" onclick="closeAddModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -369,22 +433,56 @@ if ($httpCode !== 200 || !is_array($rows)) {
             <textarea id="editText"></textarea>
 
             <div class="modal-actions">
-                <button type="button" onclick="closeModal()">Cancel</button>
-                <button type="button" class="save" onclick="saveEdit()">Save</button>
+                    <button type="button"
+                    class="btn btn-danger"
+                    onclick="deleteSid()">
+                🗑 Delete SID
+            </button>
+
+            <div class="right-actions">
+                <button type="button"
+                        class="btn btn-primary"
+                        onclick="saveEdit()">
+                    Save
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        onclick="closeModal()">
+                    Cancel
+                </button>
+            </div>
             </div>
         </div>
     </div>
     <script>
-        function openModal() {
+        function openAddModal() {
+            const selectedLang =
+                document.querySelector('select[name="lang"]').value;
+
+            document.getElementById('addLangId').value = selectedLang;
             document.getElementById('modal').style.display = 'flex';
         }
 
-        function closeModal() {
+        function closeAddModal() {
             document.getElementById('modal').style.display = 'none';
         }
     </script>
 
     <script>
+
+        // --- Event delegation: double-click to edit any row ---
+        document.getElementById('translationsTableBody').addEventListener('dblclick', function(e){
+            const row = e.target.closest('tr');
+            if(!row) return;
+
+            const sid = row.id.replace('row-','');
+            const text = row.querySelector('.text-cell').innerText;
+            const lang = document.querySelector('select[name="lang"]').value;
+
+            openEdit(sid, lang, text);
+        });
+
         function openEdit(sid, lang, text) {
             document.getElementById('editSid').value = sid;
             document.getElementById('editLang').value = lang;
@@ -399,56 +497,82 @@ if ($httpCode !== 200 || !is_array($rows)) {
         function saveEdit() {
             const sid = document.getElementById('editSid').value;
             const lang = document.getElementById('editLang').value;
-            const text = document.getElementById('editText').value;
+            let text = document.getElementById('editText').value;
 
-            fetch(`http://localhost:5294/api/translations/${sid}/${lang}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        sid: sid,
-                        langId: lang,
-                        text: text
-                    })
-                })
-                .then(async res => {
-                    if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(`HTTP ${res.status}: ${text}`);
-                    }
+            if (!text.trim()) {
+                text = `Please add some text on "${lang}" in text area`;
+            }
+
+            fetch('/api/save_translation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sid, langId: lang, text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                
                     closeModal();
-                    location.reload();
-                })
-                .catch(err => {
-                    alert("Save failed:\n" + err.message);
-                    console.error("PUT error:", err);
-                });
+
+                    // --- Reload table tbody only ---
+                fetch(window.location.pathname+'?lang='+encodeURIComponent(lang)+'&ajax=1')
+                    .then(res=>res.text())
+                    .then(html=>{
+                        document.getElementById('translationsTableBody').innerHTML = html;
+                    })
+                    .catch(err=>console.error('Table reload failed:', err));
+
+                    // ✅ Keep dropdown selection consistent
+                    const dropdown = document.querySelector('select[name="lang"]');
+                    if (dropdown) dropdown.value = data.langId;
+
+                } else {
+                    alert('Save failed: ' + data.error);
+                    console.error('API error:', data.error);
+                }
+            })
+            .catch(err => {
+                alert('Save failed (network or JS error)');
+                console.error(err);
+            });
         }
     </script>
 
     <script>
-        function deleteTranslation(sid, lang) {
-            if (!confirm("Delete this translation?")) return;
+    function deleteSid() {
+        const sid = document.getElementById('editSid').value;
 
-            fetch(`http://localhost:5294/api/translations/${sid}/${lang}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>'
-                    }
-                })
-                .then(res => {
-                    if (!res.ok) throw new Error("Delete failed");
-                    location.reload();
-                })
-                .catch(err => {
-                    alert("Delete failed");
-                    console.error(err);
-                });
+        if (!sid) {
+            alert("SID missing");
+            return;
         }
-    </script>
 
+        if (!confirm(`Delete SID "${sid}" and ALL its translations?`)) {
+            return;
+        }
+
+        fetch(`http://localhost:5294/api/translations/${encodeURIComponent(sid)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer <?= $_SESSION['access_token'] ?>'
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Delete failed");
+        })
+        .then(() => {
+            // Remove row from table
+            const row = document.getElementById(`row-${sid}`);
+            if (row) row.remove();
+
+            closeModal(); // correct function
+        })
+        .catch(err => {
+            alert(err.message);
+            console.error(err);
+        });
+    }
+    </script>
 </body>
 
 </html>

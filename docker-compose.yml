@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
 
   postgres:
@@ -5,9 +7,9 @@ services:
     container_name: translation-postgres
     restart: always
     environment:
-      POSTGRES_DB: translationdb
-      POSTGRES_USER: translationuser
-      POSTGRES_PASSWORD: translationpass
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,15 +23,14 @@ services:
     restart: always
     command: start-dev --import-realm
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
     ports:
       - "8081:8080"
     networks:
       - translation-network
-
 
 
   translation-api:
@@ -42,11 +43,11 @@ services:
       - postgres
       - keycloak
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=translationdb;Username=translationuser;Password=translationpass;"
-      Keycloak__BaseUrl: "http://keycloak:8080"
-      Keycloak__Realm: "Translation"
-      Keycloak__ClientId: "translation-client"
-      Keycloak__ClientSecret: "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN"
+      ConnectionStrings__DefaultConnection: "Host=${DB_HOST};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD};"
+      Keycloak__BaseUrl: ${KEYCLOAK_INTERNAL_URL}
+      Keycloak__Realm: ${KEYCLOAK_REALM}
+      Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
+      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
     ports:
       - "5294:8080"
     networks:
@@ -62,20 +63,22 @@ services:
     depends_on:
       - translation-api
     environment:
-      KEYCLOAK_PUBLIC_URL: http://localhost:8081
-      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-      XDEBUG_MODE: debug
-      XDEBUG_CONFIG: client_host=host.docker.internal client_port=9003
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
+      XDEBUG_MODE: ${XDEBUG_MODE}
+      XDEBUG_CONFIG: client_host=${XDEBUG_CLIENT_HOST} client_port=${XDEBUG_CLIENT_PORT}
     ports:
       - "8000:80"
     volumes:
-      - ./frontend/php:/var/www/html   # 🔥 live code mount
+      - ./frontend/php:/var/www/html
+      - ./.env:/var/www/html/.env
     networks:
       - translation-network
 
 
 volumes:
   pgdata:
+
 
 networks:
   translation-network:

@@ -4,17 +4,18 @@ session_start();
 /**
  * CONFIG
  */
+require __DIR__ . '/../config/config.php';
 
 // Public URL (used for redirect in login.php)
-$keycloakPublicUrl = 'http://localhost:8081';
+$keycloakPublicUrl =  KEYCLOAK_PUBLIC_URL; 
 
 // Internal Docker URL (used for server-to-server calls)
-$keycloakInternalUrl = 'http://keycloak:8080';
+$keycloakInternalUrl = KEYCLOAK_INTERNAL_URL;
 
-$realm        = "Translation";
-$clientId     = "translation-client";
-$clientSecret = "ZRR0g9sbKC2xtqGDTuTs5Qnn8SFFVpJN";
-$redirectUri  = "http://localhost:8000/callback.php";
+$realm        = KEYCLOAK_REALM;
+$clientId     = KEYCLOAK_CLIENT_ID;
+$clientSecret = KEYCLOAK_CLIENT_SECRET; 
+$redirectUri  = CALLBACK_URL; 
 
 /**
  * 1️⃣ Validate authorization code

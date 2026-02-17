@@ -1,5 +1,4 @@
 <?php
-xdebug_break();
 
 session_start();
 
@@ -12,14 +11,6 @@ $realm           = "Translation";
 $clientId        = "translation-client";
 $redirectUri     = "http://localhost:8000/callback.php";
 
-/**
- * If already logged in, go directly to dashboard
- */
-/**if (isset($_SESSION['access_token'])) {
-    header("Location: index.php");
-    exit;
-}
- */
 
 /**
  * Build Authorization URL

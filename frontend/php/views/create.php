@@ -12,7 +12,6 @@ $data = [
     "text"   => $_POST['text']
 ];
 
-//$ch = curl_init("http://localhost:5294/api/translations");
 
 $ch = curl_init("http://translation-api:8080/api/translations");
 
@@ -41,5 +40,4 @@ $_SESSION['selected_lang'] = $_POST['langId'];
 // Redirect back to dashboard
 header("Location: dashboard.php");
 
-//header("Location: dashboard.php?langId=" . urlencode($_POST['langId']));
 
